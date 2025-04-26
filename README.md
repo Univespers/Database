@@ -12,7 +12,7 @@ Desenvolvido com _MySQL_, modela a forma como os dados são guardados no sistema
 
 `Estudante` é a tabela principal.
 
-![Diagrama EER](doc/EER%20Diagram.png)
+![Diagrama EER](doc/EER_diagram.png)
 <div align="right"><i>Diagrama EER</i></div>
 
 ## Interface
@@ -35,4 +35,4 @@ O script `populateDatabase.sql` popula o banco de dados com dados essenciais (Po
 
 O arquivo `univespers-model.mwb` é o _Model_, e pode ser aberto com _MySQL Workbench_. Ele pode ser usado para modificar o banco de dados e gerar um novo script.
 
-Detalhe: O script deve ser modificado. Todas as instâncias de `UUID_TO_BIN(UUID())` devem ser substituídas por `(UUID_TO_BIN(UUID()))`. Isso se deve ao fato de `DEFAULT` esperar um valor constante por padrão, mas aceita funções entre `()`.
+A opção `Database` > `Forward Engineer...` utiliza o _Model_ e gera o script, criando o banco de dados. É necessário deletar o banco, se este já existir.
