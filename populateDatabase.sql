@@ -3,6 +3,10 @@ USE univespers;
 -- Autorizacao
 INSERT INTO Autorizacao (tipo, validade) VALUES ("ESTUDANTE", 3600000);
 
+-- Usuário de Teste ("aluno", "1234")
+-- NÃO USAR EM PRODUÇÃO
+CALL NovoUsuario('a21d6f3803f0491c32444ef91a0836be243cc4da5186357e805b7009a5b0669b', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 'ESTUDANTE');
+
 -- Habilidade
 INSERT INTO Habilidade (nome, sugerido) VALUES
 	("Organização", 0),
