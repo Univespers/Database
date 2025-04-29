@@ -11,10 +11,7 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- -----------------------------------------------------
 -- Schema univespers
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `univespers` DEFAULT CHARACTER SET utf8 ;
--- -----------------------------------------------------
--- Schema univespers
--- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `univespers` ;
 USE `univespers` ;
 
 -- -----------------------------------------------------
@@ -24,6 +21,7 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Polo` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `nome` VARCHAR(256) NOT NULL,
   `localidade` VARCHAR(90) NOT NULL,
+  `distribuicaoRegional` VARCHAR(20) NOT NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
 
@@ -44,15 +42,15 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `univespers`.`Estudante` (
   `id` INT NOT NULL,
-  `polo_id` INT NOT NULL,
-  `curso_id` INT NOT NULL,
+  `polo_id` INT NULL,
+  `curso_id` INT NULL,
   `uuid` BINARY(16) NOT NULL DEFAULT (UUID_TO_BIN(UUID())),
   `nome` VARCHAR(256) NOT NULL,
   `email_institucional` VARCHAR(256) NULL,
   `telefone` VARCHAR(256) NULL,
   `tem_whatsapp` TINYINT NULL,
   `descricao` VARCHAR(400) NULL,
-  PRIMARY KEY (`id`, `curso_id`, `polo_id`),
+  PRIMARY KEY (`id`),
   INDEX `fk_Estudante_Polo_idx` (`polo_id` ASC) VISIBLE,
   INDEX `fk_Estudante_Curso1_idx` (`curso_id` ASC) VISIBLE,
   CONSTRAINT `fk_Estudante_Polo`
@@ -74,7 +72,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `univespers`.`ConfirmacaoToken` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `uuid` BINARY(16) NOT NULL DEFAULT (UUID_TO_BIN(UUID())),
-  `criacao_data` DATETIME NOT NULL DEFAULT (NOW()),
+  `criacao_data` DATETIME NOT NULL DEFAULT NOW(),
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
 
@@ -182,10 +180,10 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `univespers`.`Usuario` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `autorizacao_id` INT NOT NULL,
-  `estudante_id` INT NOT NULL,
+  `estudante_id` INT NULL,
   `email_hash` VARCHAR(128) NOT NULL,
   `senha_hash` VARCHAR(128) NOT NULL,
-  PRIMARY KEY (`id`, `autorizacao_id`, `estudante_id`),
+  PRIMARY KEY (`id`, `autorizacao_id`),
   INDEX `fk_Usuario_Autorizacao1_idx` (`autorizacao_id` ASC) VISIBLE,
   INDEX `fk_Usuario_Estudante1_idx` (`estudante_id` ASC) VISIBLE,
   CONSTRAINT `fk_Usuario_Autorizacao1`
@@ -208,7 +206,7 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Token` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `usuario_id` INT NOT NULL,
   `uuid` BINARY(16) NOT NULL DEFAULT (UUID_TO_BIN(UUID())),
-  `criacao_data` DATETIME NOT NULL DEFAULT (NOW()),
+  `criacao_data` DATETIME NOT NULL DEFAULT NOW(),
   PRIMARY KEY (`id`, `usuario_id`),
   INDEX `fk_Token_Usuario1_idx` (`usuario_id` ASC) VISIBLE,
   CONSTRAINT `fk_Token_Usuario1`
@@ -218,6 +216,227 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Token` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+USE `univespers` ;
+
+-- -----------------------------------------------------
+-- procedure GetAutorizacoes
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `GetAutorizacoes` ()
+BEGIN
+	SELECT
+		tipo as "tipo",
+		validade as "validade"
+        FROM Autorizacao;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure NovaConfirmacao
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `NovaConfirmacao` ()
+BEGIN
+	INSERT INTO ConfirmacaoToken () VALUES ();
+    SELECT
+		BIN_TO_UUID(uuid) as "uuid",
+        criacao_data as "criacao_data"
+        FROM ConfirmacaoToken
+        ORDER BY id DESC LIMIT 1;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure CheckConfirmacao
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `CheckConfirmacao` (uuid VARCHAR(36))
+BEGIN
+	IF EXISTS (SELECT * FROM ConfirmacaoToken AS ct WHERE BIN_TO_UUID(ct.uuid) = uuid) THEN
+		SELECT "ok" as "response";
+	ELSE
+		SELECT "not_found" as "response";
+	END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure EsquecerConfirmacao
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `EsquecerConfirmacao` (uuid VARCHAR(36))
+BEGIN
+	DECLARE cTokenId INT;
+	SELECT id INTO cTokenId
+		FROM ConfirmacaoToken AS ct WHERE BIN_TO_UUID(ct.uuid) = uuid
+        LIMIT 1;
+    -- Checa confirmação
+	IF NOT cTokenId IS NULL THEN
+		DELETE FROM ConfirmacaoToken AS ct WHERE ct.id = cTokenId;
+		SELECT "ok" as "response";
+	ELSE
+		SELECT "not_found" as "response";
+	END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure NovoUsuario
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `NovoUsuario` (emailHash VARCHAR(128), senhaHash VARCHAR(128), autorizacaoTipo VARCHAR(45))
+BEGIN
+	-- Checa se tipo existe
+	IF EXISTS (SELECT * FROM Autorizacao WHERE tipo = autorizacaoTipo) THEN
+		-- Checa se usuário não existe
+		IF NOT EXISTS (SELECT * FROM Usuario WHERE email_hash = emailHash) THEN
+			INSERT INTO Usuario (email_hash, senha_hash, autorizacao_id) VALUES (emailHash, senhaHash, (
+				SELECT id FROM Autorizacao WHERE tipo = autorizacaoTipo
+            ));
+			SELECT "ok" AS "response";
+		ELSE
+			-- Usuário existe
+			SELECT "already_exists" AS "response";
+		END IF;
+	ELSE
+		-- Tipo inválido
+		SELECT "not_found" AS "response";
+	END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure Login
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `Login` (emailHash VARCHAR(128), senhaHash VARCHAR(128))
+BEGIN
+	DECLARE usuarioId INT;
+	SELECT id INTO usuarioId
+		FROM Usuario AS u
+		WHERE u.email_hash = emailHash AND u.senha_hash = senhaHash
+        LIMIT 1;
+    -- Checa usuário
+	IF NOT usuarioId IS NULL THEN
+		-- Cria Token e o retorna
+		INSERT INTO Token (usuario_id) VALUES (usuarioId);
+		SELECT
+			BIN_TO_UUID(uuid) as "uuid",
+			criacao_data as "criacao_data"
+			FROM Token
+			ORDER BY id DESC LIMIT 1;
+    ELSE
+		-- Usuário não existe
+		SELECT "not_found" AS "response";
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure CheckToken
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `CheckToken` (uuid VARCHAR(36))
+BEGIN
+	DECLARE tokenId INT;
+	DECLARE usuarioId INT;
+	DECLARE tokenValidade DATETIME;
+
+	SELECT id INTO tokenId
+		FROM Token AS t WHERE BIN_TO_UUID(t.uuid) = uuid
+        LIMIT 1;
+    -- Checa token
+	IF NOT tokenId IS NULL THEN
+		SELECT u.id INTO usuarioId
+			FROM (SELECT * FROM Token WHERE id = tokenId) AS t
+            INNER JOIN Usuario AS u ON t.usuario_id = u.id
+			LIMIT 1;
+		-- Checa usuário
+		IF NOT usuarioId IS NULL THEN
+			-- Checa validade de token
+			SELECT DATE_ADD(t.criacao_data, INTERVAL (a.validade / 1000) SECOND) INTO tokenValidade
+				FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
+				INNER JOIN Autorizacao AS a ON u.autorizacao_id = a.id
+				INNER JOIN Token AS t ON t.usuario_id = u.id AND t.id = tokenId
+				LIMIT 1;
+			IF (tokenValidade > NOW()) THEN
+				SELECT
+					"ok" AS "response",
+					tokenValidade AS "validade";
+			ELSE
+				-- Token expirado
+				SELECT "expired" AS "response";
+			END IF;
+		ELSE
+			-- Usuário não existe
+			SELECT "not_found" AS "response";
+		END IF;
+    ELSE
+		-- Token não existe
+		SELECT "not_found" AS "response";
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure Logout
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `Logout` (uuid VARCHAR(36))
+BEGIN
+	DECLARE tokenId INT;
+	SELECT id INTO tokenId
+		FROM Token AS t WHERE BIN_TO_UUID(t.uuid) = uuid
+        LIMIT 1;
+    -- Checa token
+	IF NOT tokenId IS NULL THEN
+		DELETE FROM Token AS t WHERE t.id = tokenId;
+		SELECT "ok" as "response";
+	ELSE
+		SELECT "not_found" as "response";
+	END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure PesquisarPolos
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `PesquisarPolos` (termo VARCHAR(128))
+BEGIN
+	SELECT
+		nome AS "nome",
+		localidade AS "localidade"
+        FROM Polo WHERE nome LIKE CONCAT("%", termo, "%");
+END$$
+
+DELIMITER ;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
