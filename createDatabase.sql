@@ -38,12 +38,42 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
+-- Table `univespers`.`Autorizacao`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `univespers`.`Autorizacao` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `tipo` VARCHAR(45) NOT NULL,
+  `validade` BIGINT(20) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `univespers`.`Usuario`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `univespers`.`Usuario` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `autorizacao_id` INT NOT NULL,
+  `email_hash` VARCHAR(128) NOT NULL,
+  `senha_hash` VARCHAR(128) NOT NULL,
+  PRIMARY KEY (`id`, `autorizacao_id`),
+  INDEX `fk_Usuario_Autorizacao1_idx` (`autorizacao_id` ASC) VISIBLE,
+  CONSTRAINT `fk_Usuario_Autorizacao1`
+    FOREIGN KEY (`autorizacao_id`)
+    REFERENCES `univespers`.`Autorizacao` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
 -- Table `univespers`.`Estudante`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `univespers`.`Estudante` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `polo_id` INT NULL,
   `curso_id` INT NULL,
+  `usuario_id` INT NOT NULL,
   `uuid` BINARY(16) NOT NULL DEFAULT (UUID_TO_BIN(UUID())),
   `nome` VARCHAR(256) NOT NULL,
   `email_institucional` VARCHAR(256) NULL,
@@ -53,6 +83,7 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Estudante` (
   PRIMARY KEY (`id`),
   INDEX `fk_Estudante_Polo_idx` (`polo_id` ASC) VISIBLE,
   INDEX `fk_Estudante_Curso1_idx` (`curso_id` ASC) VISIBLE,
+  INDEX `fk_Estudante_Usuario1_idx` (`usuario_id` ASC) VISIBLE,
   CONSTRAINT `fk_Estudante_Polo`
     FOREIGN KEY (`polo_id`)
     REFERENCES `univespers`.`Polo` (`id`)
@@ -61,6 +92,11 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Estudante` (
   CONSTRAINT `fk_Estudante_Curso1`
     FOREIGN KEY (`curso_id`)
     REFERENCES `univespers`.`Curso` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Estudante_Usuario1`
+    FOREIGN KEY (`usuario_id`)
+    REFERENCES `univespers`.`Usuario` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -156,42 +192,6 @@ CREATE TABLE IF NOT EXISTS `univespers`.`EstudanteContato` (
   PRIMARY KEY (`id`, `estudante_id`),
   INDEX `fk_EstudanteContato_Estudante1_idx` (`estudante_id` ASC) VISIBLE,
   CONSTRAINT `fk_EstudanteContato_Estudante1`
-    FOREIGN KEY (`estudante_id`)
-    REFERENCES `univespers`.`Estudante` (`id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `univespers`.`Autorizacao`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `univespers`.`Autorizacao` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `tipo` VARCHAR(45) NOT NULL,
-  `validade` BIGINT(20) UNSIGNED NOT NULL,
-  PRIMARY KEY (`id`))
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `univespers`.`Usuario`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `univespers`.`Usuario` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `autorizacao_id` INT NOT NULL,
-  `estudante_id` INT NULL,
-  `email_hash` VARCHAR(128) NOT NULL,
-  `senha_hash` VARCHAR(128) NOT NULL,
-  PRIMARY KEY (`id`, `autorizacao_id`),
-  INDEX `fk_Usuario_Autorizacao1_idx` (`autorizacao_id` ASC) VISIBLE,
-  INDEX `fk_Usuario_Estudante1_idx` (`estudante_id` ASC) VISIBLE,
-  CONSTRAINT `fk_Usuario_Autorizacao1`
-    FOREIGN KEY (`autorizacao_id`)
-    REFERENCES `univespers`.`Autorizacao` (`id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Usuario_Estudante1`
     FOREIGN KEY (`estudante_id`)
     REFERENCES `univespers`.`Estudante` (`id`)
     ON DELETE NO ACTION
@@ -329,6 +329,7 @@ USE `univespers`$$
 CREATE PROCEDURE `Login` (emailHash VARCHAR(128), senhaHash VARCHAR(128))
 BEGIN
 	DECLARE usuarioId INT;
+
 	SELECT id INTO usuarioId
 		FROM Usuario AS u
 		WHERE u.email_hash = emailHash AND u.senha_hash = senhaHash
@@ -339,9 +340,13 @@ BEGIN
 		INSERT INTO Token (usuario_id) VALUES (usuarioId);
 		SELECT
 			BIN_TO_UUID(uuid) as "uuid",
-			criacao_data as "criacao_data"
-			FROM Token
-			ORDER BY id DESC LIMIT 1;
+            a.tipo AS "tipo",
+			a.validade AS "validade"
+			FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
+			INNER JOIN Autorizacao AS a ON u.autorizacao_id = a.id
+			INNER JOIN Token AS t ON t.usuario_id = u.id
+			ORDER BY t.id DESC
+			LIMIT 1;
     ELSE
 		-- Usuário não existe
 		SELECT "not_found" AS "response";
@@ -358,43 +363,13 @@ DELIMITER $$
 USE `univespers`$$
 CREATE PROCEDURE `CheckToken` (uuid VARCHAR(36))
 BEGIN
-	DECLARE tokenId INT;
-	DECLARE usuarioId INT;
-	DECLARE tokenValidade DATETIME;
-
-	SELECT id INTO tokenId
-		FROM Token AS t WHERE BIN_TO_UUID(t.uuid) = uuid
-        LIMIT 1;
-    -- Checa token
-	IF NOT tokenId IS NULL THEN
-		SELECT u.id INTO usuarioId
-			FROM (SELECT * FROM Token WHERE id = tokenId) AS t
-            INNER JOIN Usuario AS u ON t.usuario_id = u.id
-			LIMIT 1;
-		-- Checa usuário
-		IF NOT usuarioId IS NULL THEN
-			-- Checa validade de token
-			SELECT DATE_ADD(t.criacao_data, INTERVAL (a.validade / 1000) SECOND) INTO tokenValidade
-				FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
-				INNER JOIN Autorizacao AS a ON u.autorizacao_id = a.id
-				INNER JOIN Token AS t ON t.usuario_id = u.id AND t.id = tokenId
-				LIMIT 1;
-			IF (tokenValidade > NOW()) THEN
-				SELECT
-					"ok" AS "response",
-					tokenValidade AS "validade";
-			ELSE
-				-- Token expirado
-				SELECT "expired" AS "response";
-			END IF;
-		ELSE
-			-- Usuário não existe
-			SELECT "not_found" AS "response";
-		END IF;
-    ELSE
-		-- Token não existe
-		SELECT "not_found" AS "response";
-    END IF;
+	DECLARE response VARCHAR(20);
+	DECLARE validade BIGINT(20);
+    
+    CALL _CheckToken(uuid, response, validade);
+	SELECT
+		response AS "response",
+		validade AS "validade";
 END$$
 
 DELIMITER ;
@@ -434,6 +409,157 @@ BEGIN
 		nome AS "nome",
 		localidade AS "localidade"
         FROM Polo WHERE nome LIKE CONCAT("%", termo, "%");
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure NovoEstudante
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `NovoEstudante` (tokenUUID VARCHAR(36), nome VARCHAR(256), emailInstitucional VARCHAR(256), poloNome VARCHAR(256), cursoNome VARCHAR(256))
+BEGIN
+	DECLARE response VARCHAR(20);
+	DECLARE validade BIGINT(20);
+    
+	DECLARE tokenId INT;
+	DECLARE usuarioId INT;
+	DECLARE poloId INT;
+	DECLARE cursoId INT;
+    
+    -- Checa token
+    CALL _CheckToken(tokenUUID, response, validade);
+    IF (response = "ok") THEN
+		CALL _GetToken(tokenUUID, tokenId);
+		CALL _GetUsuario(tokenId, usuarioId);
+		CALL _GetPolo(poloNome, poloId);
+		CALL _GetCurso(cursoNome, cursoId);
+        IF NOT (SELECT * FROM Estudante AS e WHERE e.usuario_id = usuario_id) IS NULL THEN
+			INSERT INTO Estudante (
+				polo_id, curso_id, usuario_id,
+				nome, email_institucional
+			) VALUES (
+				poloId, cursoId, usuarioId,
+				nome, emailInstitucional
+			);
+			SELECT "ok" AS "response";
+		ELSE
+			-- Estudante já existe
+			SELECT "already_exists" AS "response";
+		END IF;
+	ELSE
+		-- Token expirado/não encontrado
+		SELECT response AS "response";
+	END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _CheckToken
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_CheckToken` (IN uuid VARCHAR(36), OUT response VARCHAR(20), OUT validade BIGINT(20))
+BEGIN
+	DECLARE tokenId INT;
+	DECLARE usuarioId INT;
+	DECLARE tokenValidade DATETIME;
+
+	CALL _GetToken(uuid, tokenId);
+    -- Checa token
+	IF NOT tokenId IS NULL THEN
+		CALL _GetUsuario(tokenId, usuarioId);
+		-- Checa usuário
+		IF NOT usuarioId IS NULL THEN
+			-- Checa validade de token
+			SELECT DATE_ADD(t.criacao_data, INTERVAL (a.validade / 1000) SECOND) INTO tokenValidade
+				FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
+				INNER JOIN Autorizacao AS a ON u.autorizacao_id = a.id
+				INNER JOIN Token AS t ON t.usuario_id = u.id AND t.id = tokenId
+				LIMIT 1;
+			IF (tokenValidade > NOW()) THEN
+				SELECT "ok" INTO response;
+				SELECT ((UNIX_TIMESTAMP(tokenValidade) * 1000) - (UNIX_TIMESTAMP(NOW()) * 1000)) INTO validade;
+			ELSE
+				-- Token expirado
+				SELECT "expired" INTO response;
+				SELECT -1 INTO validade;
+			END IF;
+		ELSE
+			-- Usuário não existe
+			SELECT "not_found" INTO response;
+			SELECT -1 INTO validade;
+		END IF;
+    ELSE
+		-- Token não existe
+		SELECT "not_found" INTO response;
+		SELECT -1 INTO validade;
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _GetToken
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_GetToken` (IN uuid VARCHAR(36), OUT id INT)
+BEGIN
+	SELECT t.id INTO id
+		FROM Token AS t WHERE BIN_TO_UUID(t.uuid) = uuid
+        LIMIT 1;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _GetUsuario
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_GetUsuario` (IN tokenId INT, OUT usuarioId INT)
+BEGIN
+	SELECT u.id INTO usuarioId
+		FROM (SELECT * FROM Token WHERE id = tokenId) AS t
+		INNER JOIN Usuario AS u ON t.usuario_id = u.id
+		LIMIT 1;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _GetPolo
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_GetPolo` (IN nome VARCHAR(256), OUT id INT)
+BEGIN
+	SELECT p.id INTO id
+		FROM Polo AS p WHERE p.nome = nome
+        LIMIT 1;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _GetCurso
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_GetCurso` (IN nome VARCHAR(256), OUT id INT)
+BEGIN
+	SELECT c.id INTO id
+		FROM Curso AS c WHERE c.nome = nome
+        LIMIT 1;
 END$$
 
 DELIMITER ;
