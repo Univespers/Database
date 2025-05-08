@@ -564,6 +564,105 @@ END$$
 
 DELIMITER ;
 
+-- -----------------------------------------------------
+-- procedure PesquisarColegas
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `PesquisarColegas` (termo VARCHAR(256), pagina INT, quantidade INT)
+BEGIN
+	DECLARE totalColegas INT;
+    
+	SELECT COUNT(*) INTO totalColegas FROM Estudante AS e
+		INNER JOIN Polo AS p ON e.polo_id = p.id
+		INNER JOIN Curso AS c ON e.curso_id = c.id
+		WHERE 
+			e.nome LIKE CONCAT("%", termo, "%")
+			OR p.nome LIKE CONCAT("%", termo, "%")
+			OR c.nome LIKE CONCAT("%", termo, "%");
+    
+	SELECT
+		BIN_TO_UUID(e.uuid) AS "uuid",
+		e.nome AS "nome",
+		p.nome AS "polo",
+		c.nome AS "curso",
+        totalColegas AS "total"
+		FROM Estudante AS e
+		INNER JOIN Polo AS p ON e.polo_id = p.id
+		INNER JOIN Curso AS c ON e.curso_id = c.id
+		WHERE 
+			e.nome LIKE CONCAT("%", termo, "%")
+			OR p.nome LIKE CONCAT("%", termo, "%")
+			OR c.nome LIKE CONCAT("%", termo, "%")
+		LIMIT quantidade
+		OFFSET pagina;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure GetColega
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `GetColega` (uuid VARCHAR(36))
+BEGIN
+	SELECT
+		BIN_TO_UUID(e.uuid) AS "uuid",
+		e.nome AS "nome",
+		p.nome AS "polo",
+		c.nome AS "curso"
+		FROM Estudante AS e
+		INNER JOIN Polo AS p ON e.polo_id = p.id
+		INNER JOIN Curso AS c ON e.curso_id = c.id
+		WHERE BIN_TO_UUID(e.uuid) = uuid;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure GetColegaDetalhes
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `GetColegaDetalhes` (uuid VARCHAR(36))
+BEGIN
+	SELECT
+		BIN_TO_UUID(e.uuid) AS "uuid",
+		e.nome AS "nome",
+		p.nome AS "polo",
+		c.nome AS "curso",
+		e.telefone AS "telefone",
+		e.temWhatsapp AS "temWhatsapp"
+		FROM Estudante AS e
+		INNER JOIN Polo AS p ON e.polo_id = p.id
+		INNER JOIN Curso AS c ON e.curso_id = c.id
+		WHERE BIN_TO_UUID(e.uuid) = uuid;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure GetColegaContatos
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `GetColegaContatos` (uuid VARCHAR(36))
+BEGIN
+	SELECT
+		c.nome AS "nome",
+		c.url AS "link"
+		FROM Estudante AS e
+		INNER JOIN Contato AS c ON c.estudante_id = e.id
+		WHERE BIN_TO_UUID(e.uuid) = uuid;
+END$$
+
+DELIMITER ;
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
