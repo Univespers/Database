@@ -339,7 +339,7 @@ BEGIN
 		-- Cria Token e o retorna
 		INSERT INTO Token (usuario_id) VALUES (usuarioId);
 		SELECT
-			BIN_TO_UUID(uuid) as "uuid",
+			BIN_TO_UUID(uuid) AS "uuid",
             a.tipo AS "tipo",
 			a.validade AS "validade"
 			FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
@@ -436,7 +436,7 @@ BEGIN
 		CALL _GetUsuario(tokenId, usuarioId);
 		CALL _GetPolo(poloNome, poloId);
 		CALL _GetCurso(cursoNome, cursoId);
-        IF NOT (SELECT * FROM Estudante AS e WHERE e.usuario_id = usuario_id) IS NULL THEN
+        IF NOT EXISTS (SELECT * FROM Estudante AS e WHERE e.usuario_id = usuarioId) THEN
 			INSERT INTO Estudante (
 				polo_id, curso_id, usuario_id,
 				nome, email_institucional
@@ -636,7 +636,7 @@ BEGIN
 		p.nome AS "polo",
 		c.nome AS "curso",
 		e.telefone AS "telefone",
-		e.temWhatsapp AS "temWhatsapp"
+		e.tem_whatsapp AS "temWhatsapp"
 		FROM Estudante AS e
 		INNER JOIN Polo AS p ON e.polo_id = p.id
 		INNER JOIN Curso AS c ON e.curso_id = c.id
@@ -657,8 +657,147 @@ BEGIN
 		c.nome AS "nome",
 		c.url AS "link"
 		FROM Estudante AS e
-		INNER JOIN Contato AS c ON c.estudante_id = e.id
+		INNER JOIN EstudanteContato AS c ON c.estudante_id = e.id
 		WHERE BIN_TO_UUID(e.uuid) = uuid;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _Login
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_Login` (IN emailHash VARCHAR(128), IN senhaHash VARCHAR(128), OUT tokenUUID VARCHAR(36))
+BEGIN
+	DECLARE usuarioId INT;
+
+	SELECT id INTO usuarioId
+		FROM Usuario AS u
+		WHERE u.email_hash = emailHash AND u.senha_hash = senhaHash
+        LIMIT 1;
+    -- Checa usuário
+	IF NOT usuarioId IS NULL THEN
+		-- Cria Token e o retorna
+		INSERT INTO Token (usuario_id) VALUES (usuarioId);
+		SELECT BIN_TO_UUID(uuid) INTO tokenUUID
+			FROM (SELECT * FROM Usuario WHERE id = usuarioId) AS u
+			INNER JOIN Autorizacao AS a ON u.autorizacao_id = a.id
+			INNER JOIN Token AS t ON t.usuario_id = u.id
+			ORDER BY t.id DESC
+			LIMIT 1;
+    ELSE
+		-- Usuário não existe
+		SELECT "not_found" AS "response";
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure CreateEstudante
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `CreateEstudante` (
+	emailHash VARCHAR(128), senhaHash VARCHAR(128),
+    nome VARCHAR(256), emailInstitucional VARCHAR(256),
+    poloNome VARCHAR(256), cursoNome VARCHAR(256),
+    descricao VARCHAR(400), 
+    telefone VARCHAR(256), tem_whatsapp TINYINT)
+BEGIN
+	DECLARE tokenUUID VARCHAR(36);
+    
+	DECLARE response VARCHAR(20);
+	DECLARE validade BIGINT(20);
+    
+	DECLARE tokenId INT;
+	DECLARE usuarioId INT;
+	DECLARE poloId INT;
+	DECLARE cursoId INT;
+    
+    -- NovoUsuario
+	-- Checa se tipo existe
+	IF EXISTS (SELECT * FROM Autorizacao WHERE tipo = 'ESTUDANTE') THEN
+		-- Checa se usuário não existe
+		IF NOT EXISTS (SELECT * FROM Usuario WHERE email_hash = emailHash) THEN
+			INSERT INTO Usuario (email_hash, senha_hash, autorizacao_id) VALUES (emailHash, senhaHash, (
+				SELECT id FROM Autorizacao WHERE tipo = 'ESTUDANTE'
+            ));
+		END IF;
+	END IF;
+    
+    -- Login
+	CALL _Login(emailHash, senhaHash, tokenUUID);
+    
+    -- NovoEstudante
+    -- Checa token
+    CALL _CheckToken(tokenUUID, response, validade);
+    IF (response = "ok") THEN
+		CALL _GetToken(tokenUUID, tokenId);
+		CALL _GetUsuario(tokenId, usuarioId);
+		CALL _GetPolo(poloNome, poloId);
+		CALL _GetCurso(cursoNome, cursoId);
+        IF NOT EXISTS (SELECT * FROM Estudante AS e WHERE e.usuario_id = usuarioId) THEN
+			INSERT INTO Estudante (
+				polo_id, curso_id, usuario_id,
+				nome, email_institucional
+			) VALUES (
+				poloId, cursoId, usuarioId,
+				nome, emailInstitucional
+			);
+		END IF;
+	END IF;
+    
+    -- Logout
+	CALL _Logout(tokenUUID, response);
+    
+    -- Update Estudante
+    UPDATE Estudante AS e
+        INNER JOIN Usuario AS u ON e.usuario_id = u.id
+		SET e.descricao = descricao, e.telefone = telefone, e.tem_whatsapp = tem_whatsapp
+        WHERE u.email_hash = emailHash AND u.senha_hash = senhaHash;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure NovoContato
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `NovoContato` (emailHash VARCHAR(256), senhaHash VARCHAR(256), nome VARCHAR(256), url VARCHAR(256))
+BEGIN
+	INSERT INTO EstudanteContato (estudante_id, nome, url)
+		SELECT e.id, nome, url FROM Estudante AS e
+        INNER JOIN Usuario AS u ON e.usuario_id = u.id
+        WHERE u.email_hash = emailHash AND u.senha_hash = senhaHash;
+END$$
+
+DELIMITER ;
+
+-- -----------------------------------------------------
+-- procedure _Logout
+-- -----------------------------------------------------
+
+DELIMITER $$
+USE `univespers`$$
+CREATE PROCEDURE `_Logout` (IN uuid VARCHAR(36), OUT response VARCHAR(20))
+BEGIN
+	DECLARE tokenId INT;
+	SELECT id INTO tokenId
+		FROM Token AS t WHERE BIN_TO_UUID(t.uuid) = uuid
+        LIMIT 1;
+    -- Checa token
+	IF NOT tokenId IS NULL THEN
+		DELETE FROM Token AS t WHERE t.id = tokenId;
+		SELECT "ok" INTO response;
+	ELSE
+		SELECT "not_found" INTO response;
+	END IF;
 END$$
 
 DELIMITER ;

@@ -3,10 +3,6 @@ USE univespers;
 -- Autorizacao
 INSERT INTO Autorizacao (tipo, validade) VALUES ("ESTUDANTE", 3600000);
 
--- Usuário de Teste ("aluno", "1234")
--- NÃO USAR EM PRODUÇÃO
-CALL NovoUsuario('a21d6f3803f0491c32444ef91a0836be243cc4da5186357e805b7009a5b0669b', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 'ESTUDANTE');
-
 -- Habilidade
 INSERT INTO Habilidade (nome, sugerido) VALUES
 	("Organização", 0),
@@ -85,7 +81,7 @@ INSERT INTO Curso (nome, sugerido) VALUES
     ("Curso Superior de Tecnologia em Gestão Pública", 0),
     ("Engenharia de Computação", 0),
     ("Engenharia de Produção", 0),
-    ("Letras - Habilitação em Língua Portuguesa ", 0),
+    ("Letras - Habilitação em Língua Portuguesa", 0),
     ("Licenciatura em Matemática", 0),
     ("Pedagogia", 0),
     ("Tecnologia em Processos Gerenciais", 0);
@@ -528,3 +524,70 @@ INSERT INTO Polo (nome, localidade, distribuicaoRegional) VALUES
     ("SÃO PAULO - VILA CURUÇÁ", "", "DRP14"),
     ("SÃO PAULO - VILA DO SOL", "", "DRP14"),
     ("SÃO PAULO - VILA RUBI", "", "DRP14");
+
+
+
+-- NÃO USAR EM PRODUÇÃO
+-- Usuário de Teste ("aluno", "1234")
+CALL NovoUsuario('a21d6f3803f0491c32444ef91a0836be243cc4da5186357e805b7009a5b0669b', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 'ESTUDANTE');
+-- Colegas
+CALL CreateEstudante('hash-D6kLGKh0LZO47rQh', 'hash-Rj0NDCixaRPunT28', "Aluno #8545", "aluno8545@email.com", "SANTANA DE PARNAÍBA", "Bacharelado em Administração", "Descrição", "(323) 472-7130", 0);
+CALL NovoContato('hash-D6kLGKh0LZO47rQh', 'hash-Rj0NDCixaRPunT28', "Reddit", "8545@reddit.com");
+CALL NovoContato('hash-D6kLGKh0LZO47rQh', 'hash-Rj0NDCixaRPunT28', "LinkedIn", "8545@linkedin.com");
+
+CALL CreateEstudante('hash-oOrtx48b4vUxhfSV', 'hash-1K3ZZFzxNzkebycS', "Aluno #3708", "aluno3708@email.com", "SANTO ANDRÉ - PREFEITURA", "Bacharelado em Ciência de Dados", "Descrição", "(731) 281-8885", 0);
+CALL NovoContato('hash-oOrtx48b4vUxhfSV', 'hash-1K3ZZFzxNzkebycS', "Discord", "3708@discord.com");
+
+CALL CreateEstudante('hash-2g36R2zY3mJ9kb42', 'hash-xil6cCLgNIWhxQgq', "Aluno #6012", "aluno6012@email.com", "SÃO CAETANO DO SUL - PREFEITURA", "Bacharelado em Tecnologia da Informação", "Descrição", "(540) 853-7743", 1);
+CALL NovoContato('hash-2g36R2zY3mJ9kb42', 'hash-xil6cCLgNIWhxQgq', "Reddit", "6012@reddit.com");
+
+CALL CreateEstudante('hash-6UfLVc3i4MnhOyzW', 'hash-vufWXeVCxrhbArHy', "Aluno #6574", "aluno6574@email.com", "SÃO LOURENÇO DA SERRA", "Curso Superior de Tecnologia em Gestão Pública", "Descrição", "(730) 461-7049", 1);
+CALL NovoContato('hash-6UfLVc3i4MnhOyzW', 'hash-vufWXeVCxrhbArHy', "Facebook", "6574@facebook.com");
+
+CALL CreateEstudante('hash-2CqUh9HgpRyg6ovb', 'hash-jex4yX27nhz8d7KD', "Aluno #4145", "aluno4145@email.com", "SUZANO", "Engenharia de Computação", "Descrição", "(342) 703-4679", 0);
+CALL NovoContato('hash-2CqUh9HgpRyg6ovb', 'hash-jex4yX27nhz8d7KD', "Facebook", "4145@facebook.com");
+CALL NovoContato('hash-2CqUh9HgpRyg6ovb', 'hash-jex4yX27nhz8d7KD', "Instagram", "4145@instagram.com");
+
+CALL CreateEstudante('hash-UJ6GxlqpvQtI17XH', 'hash-x833VY4tninIryKL', "Aluno #5712", "aluno5712@email.com", "VARGEM GRANDE PAULISTA", "Engenharia de Produção", "Descrição", "(530) 766-8466", 1);
+CALL NovoContato('hash-UJ6GxlqpvQtI17XH', 'hash-x833VY4tninIryKL', "Reddit", "5712@reddit.com");
+CALL NovoContato('hash-UJ6GxlqpvQtI17XH', 'hash-x833VY4tninIryKL', "GitHub", "5712@github.com");
+CALL NovoContato('hash-UJ6GxlqpvQtI17XH', 'hash-x833VY4tninIryKL', "Email", "5712@email.com");
+CALL NovoContato('hash-UJ6GxlqpvQtI17XH', 'hash-x833VY4tninIryKL', "Discord", "5712@discord.com");
+
+CALL CreateEstudante('hash-rcrFtUn05KrJIvw5', 'hash-kTG0otRFWDywJamU', "Aluno #9034", "aluno9034@email.com", "GUARULHOS", "Letras - Habilitação em Língua Portuguesa", "Descrição", "(345) 354-8589", 0);
+CALL NovoContato('hash-rcrFtUn05KrJIvw5', 'hash-kTG0otRFWDywJamU', "Email", "9034@email.com");
+
+CALL CreateEstudante('hash-b5sZFMLvuXvQZ0GV', 'hash-B8W1ua8dyAS2BWES', "Aluno #8011", "aluno8011@email.com", "SÃO BERNARDO DO CAMPO", "Licenciatura em Matemática", "Descrição", "(281) 288-2348", 0);
+CALL NovoContato('hash-b5sZFMLvuXvQZ0GV', 'hash-B8W1ua8dyAS2BWES', "Reddit", "8011@reddit.com");
+
+CALL CreateEstudante('hash-lT8ijTSokT9f8Yqr', 'hash-65tAxfoW9iZmCCDH', "Aluno #4070", "aluno4070@email.com", "SANTANA DE PARNAÍBA", "Bacharelado em Administração", "Descrição", "(323) 472-7130", 0);
+CALL NovoContato('hash-lT8ijTSokT9f8Yqr', 'hash-65tAxfoW9iZmCCDH', "Reddit", "4070@reddit.com");
+CALL NovoContato('hash-lT8ijTSokT9f8Yqr', 'hash-65tAxfoW9iZmCCDH', "LinkedIn", "4070@linkedin.com");
+
+CALL CreateEstudante('hash-xNfm4o0EnBqTDa7a', 'hash-HlUZ5ZPCwVK7LoWk', "Aluno #7584", "aluno7584@email.com", "SANTO ANDRÉ - PREFEITURA", "Bacharelado em Ciência de Dados", "Descrição", "(731) 281-8885", 0);
+CALL NovoContato('hash-xNfm4o0EnBqTDa7a', 'hash-HlUZ5ZPCwVK7LoWk', "Discord", "7584@discord.com");
+CALL NovoContato('hash-xNfm4o0EnBqTDa7a', 'hash-HlUZ5ZPCwVK7LoWk', "Reddit", "7584@reddit.com");
+CALL NovoContato('hash-xNfm4o0EnBqTDa7a', 'hash-HlUZ5ZPCwVK7LoWk', "LinkedIn", "7584@linkedin.com");
+
+CALL CreateEstudante('hash-m2EYjE5kpkNKwfUb', 'hash-WHamZB2tjoeK3E9X', "Aluno #9873", "aluno9873@email.com", "SÃO CAETANO DO SUL - PREFEITURA", "Bacharelado em Tecnologia da Informação", "Descrição", "(540) 853-7743", 1);
+CALL NovoContato('hash-m2EYjE5kpkNKwfUb', 'hash-WHamZB2tjoeK3E9X', "Reddit", "9873@reddit.com");
+
+CALL CreateEstudante('hash-wdrwoa6ALFddojya', 'hash-mfkmFoewoJ4Tl52s', "Aluno #8173", "aluno8173@email.com", "SÃO LOURENÇO DA SERRA", "Curso Superior de Tecnologia em Gestão Pública", "Descrição", "(730) 461-7049", 1);
+CALL NovoContato('hash-wdrwoa6ALFddojya', 'hash-mfkmFoewoJ4Tl52s', "Facebook", "8173@facebook.com");
+CALL NovoContato('hash-wdrwoa6ALFddojya', 'hash-mfkmFoewoJ4Tl52s', "GitHub", "8173@github.com");
+
+CALL CreateEstudante('hash-1rXTiaL2Omfg6MsV', 'hash-pEgFvCJcbt0gI8Bk', "Aluno #3089", "aluno3089@email.com", "SUZANO", "Engenharia de Computação", "Descrição", "(342) 703-4679", 0);
+CALL NovoContato('hash-1rXTiaL2Omfg6MsV', 'hash-pEgFvCJcbt0gI8Bk', "Facebook", "3089@facebook.com");
+CALL NovoContato('hash-1rXTiaL2Omfg6MsV', 'hash-pEgFvCJcbt0gI8Bk', "Instagram", "3089@instagram.com");
+
+CALL CreateEstudante('hash-yvWZPs6uFl9b6IBf', 'hash-TiCTBxYxYWHLKxAT', "Aluno #3410", "aluno3410@email.com", "VARGEM GRANDE PAULISTA", "Engenharia de Produção", "Descrição", "(530) 766-8466", 1);
+CALL NovoContato('hash-yvWZPs6uFl9b6IBf', 'hash-TiCTBxYxYWHLKxAT', "Reddit", "3410@reddit.com");
+CALL NovoContato('hash-yvWZPs6uFl9b6IBf', 'hash-TiCTBxYxYWHLKxAT', "GitHub", "3410@github.com");
+CALL NovoContato('hash-yvWZPs6uFl9b6IBf', 'hash-TiCTBxYxYWHLKxAT', "Email", "3410@email.com");
+CALL NovoContato('hash-yvWZPs6uFl9b6IBf', 'hash-TiCTBxYxYWHLKxAT', "Discord", "3410@discord.com");
+
+CALL CreateEstudante('hash-5B3PzuznrmfH5HFB', 'hash-woFQjFBXM7IAXFyz', "Aluno #0797", "aluno0797@email.com", "GUARULHOS", "Letras - Habilitação em Língua Portuguesa", "Descrição", "(345) 354-8589", 0);
+CALL NovoContato('hash-5B3PzuznrmfH5HFB', 'hash-woFQjFBXM7IAXFyz', "Email", "0797@email.com");
+
+CALL CreateEstudante('hash-KbubR0loSrSHhd5x', 'hash-We6ChwhqRAENRmGE', "Aluno #4005", "aluno4005@email.com", "SÃO BERNARDO DO CAMPO", "Licenciatura em Matemática", "Descrição", "(281) 288-2348", 0);
+CALL NovoContato('hash-KbubR0loSrSHhd5x', 'hash-We6ChwhqRAENRmGE', "Reddit", "4005@reddit.com");
