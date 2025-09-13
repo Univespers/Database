@@ -216,6 +216,78 @@ CREATE TABLE IF NOT EXISTS `univespers`.`Token` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+
+-- -----------------------------------------------------
+-- Table `univespers`.`Grupo`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `univespers`.`Grupo` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `admin_id` INT NOT NULL,
+  `descricao` VARCHAR(400) NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_Grupo_Estudante1_idx` (`admin_id` ASC) VISIBLE,
+  CONSTRAINT `fk_Grupo_Estudante1`
+    FOREIGN KEY (`admin_id`)
+    REFERENCES `univespers`.`Estudante` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `univespers`.`Contato`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `univespers`.`Contato` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `estudante_id` INT NOT NULL,
+  `grupo_contato_id` INT NOT NULL,
+  `estudante_contato_id` INT NULL,
+  PRIMARY KEY (`id`, `estudante_id`),
+  INDEX `fk_Contato_Grupo1_idx` (`grupo_contato_id` ASC) VISIBLE,
+  INDEX `fk_Contato_Estudante1_idx` (`estudante_id` ASC) VISIBLE,
+  INDEX `fk_Contato_Estudante2_idx` (`estudante_contato_id` ASC) VISIBLE,
+  CONSTRAINT `fk_Contato_Grupo1`
+    FOREIGN KEY (`grupo_contato_id`)
+    REFERENCES `univespers`.`Grupo` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Contato_Estudante1`
+    FOREIGN KEY (`estudante_id`)
+    REFERENCES `univespers`.`Estudante` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Contato_Estudante2`
+    FOREIGN KEY (`estudante_contato_id`)
+    REFERENCES `univespers`.`Estudante` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `univespers`.`Mensagem`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `univespers`.`Mensagem` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `contato_id` INT NOT NULL,
+  `estudante_id` INT NOT NULL,
+  `mensagem` VARCHAR(400) NOT NULL,
+  `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`, `contato_id`, `estudante_id`),
+  INDEX `fk_Mensagem_Contato1_idx` (`contato_id` ASC) VISIBLE,
+  INDEX `fk_Mensagem_Estudante1_idx` (`estudante_id` ASC) VISIBLE,
+  CONSTRAINT `fk_Mensagem_Contato1`
+    FOREIGN KEY (`contato_id`)
+    REFERENCES `univespers`.`Contato` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Mensagem_Estudante1`
+    FOREIGN KEY (`estudante_id`)
+    REFERENCES `univespers`.`Estudante` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
 USE `univespers` ;
 
 -- -----------------------------------------------------
